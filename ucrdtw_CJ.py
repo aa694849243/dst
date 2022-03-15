@@ -47,16 +47,16 @@ from collections import deque
 
 class UCR_DTW(object):
 
-    def __init__(self, data_file=None, query_file=None, m=128, R=0.05):
-        self.fp = open(data_file, 'r')  # data file path
-        self.qp = open(query_file, 'r')  # query file path
+    def __init__(self, data_np=None, query_np=None, m=128, R=0.05):
+        self.content = data_np  # data file path
+        # self.qp = open(query_file, 'r')  # query file path
         self.result = open("lb_kim.result", 'w')
         self.bsf = float('inf')  # best-so-far
-        self.m = m  # the size of the query
-        self.t = [None] * (self.m * 2)  # candidate C sequence
-        self.q = [0] * self.m  # query array
+        self.m = len(query_np)  # the size of the query
+        self.t = np.empty(self.m * 2)  # candidate C sequence
+        self.q = query_np  # query array
         self.order = [None] * self.m  # new order of the query
-        self.u, self.l = [None] * self.m, [None] * self.m  # LB_Keogh Upper,Lower bound
+        self.u, self.l = np.empty(self.m), np.empty(self.m)  # LB_Keogh Upper,Lower bound
         self.qo = [None] * self.m
         self.uo = [None] * self.m
         self.lo = [None] * self.m
@@ -81,9 +81,9 @@ class UCR_DTW(object):
         self.kim = 0
         self.keogh = 0  # LB_Keogh_EQ
         self.keogh2 = 0  # LB_Keogh_EC
-        self.buffer = [0.0] * self.EPOCH
-        self.u_buff = [0.0] * self.EPOCH
-        self.l_buff = [0.0] * self.EPOCH
+        self.buffer = np.empty(self.EPOCH)
+        self.u_buff = np.empty(self.EPOCH)
+        self.l_buff = np.empty(self.EPOCH)
 
     def print_result(self, i):
         print("Location: ", self.loc)
@@ -149,13 +149,13 @@ class UCR_DTW(object):
 
                 # LB_KimFL
                 lb_kim = self.lb_kim_hierarchy(self.t, self.q, j, self.m, mean, std, self.bsf)
-                print("lb_kim:%f best_so_far:%f" % (lb_kim, self.bsf), file=self.result)
+                print("lb_kim:%f best_so_far:%f" % (lb_kim, self.bsf))
                 # 级联lower bound策略
                 if lb_kim < self.bsf:
                     # LB_Keogh_EQ
                     lb_k = self.lb_keogh_cumulative(self.order, self.t, self.uo, self.lo, self.cb1, j, self.m, mean,
                                                     std, self.bsf)
-                    print("lb_k:%f best_so_far:%f" % (lb_k, self.bsf), file=self.result)
+                    print("lb_k:%f best_so_far:%f" % (lb_k, self.bsf))
                     if lb_k < self.bsf:
                         for k in range(self.m):
                             # z-normalization of t will be computed on the fly
@@ -187,7 +187,6 @@ class UCR_DTW(object):
             print("#" * 20, it, ep, "#" * 20)
 
         i = it * (self.EPOCH - self.m + 1) + ep
-        self.fp.close()
         self.result.close()
         self.t2 = time.time()
         self.print_result(i)
@@ -196,12 +195,7 @@ class UCR_DTW(object):
         # read first m-1 points
         if it == 0:
             # 把data file中的m-1个数据读进buffer
-            for k in range(self.m - 1):
-                try:
-                    line = self.line_to_float(next(self.fp))
-                    self.buffer[k] = line
-                except:
-                    break
+            self.buffer[:self.m - 1] = self.content[:self.m - 1]
         else:
             for k in range(self.m - 1):
                 # 把最后的m-1个时间点移到buffer的前面
@@ -210,13 +204,9 @@ class UCR_DTW(object):
         # fill the rest of self.buffer
         # read buffer of size EPOCH or when all data has been read
         ep = self.m - 1
-        while ep < self.EPOCH:
-            try:
-                line = self.line_to_float(next(self.fp))  # 把data file中的数据读入buffer中
-                self.buffer[ep] = line
-            except:
-                break
-            ep += 1
+        self.buffer[ep:min(self.EPOCH, len(self.content))] = self.content[ep:self.EPOCH]
+        ep = min(self.EPOCH, len(self.content))
+        self.content = self.content[self.EPOCH - self.m + 1:]
         return ep
 
     def Compute_Mean_Std(self, ex, ex2):
@@ -253,14 +243,9 @@ class UCR_DTW(object):
         """
         对标准化后的Q的所有元素取绝对值，然后对这些时间点的绝对值进行排序，获取对应的时间点索引序列
         """
-        Q_tmp = {}
-        # 求解获取连续最大子序列的order
-        # sort the query one time by abs(z-norm(q[i]))
-        for i in range(self.m):
-            Q_tmp[i] = abs(self.q[i])
-        sorted_index = [item[0] for item in sorted(Q_tmp.items(), key=lambda x: x[1], reverse=True)]
+        sorted_index = np.argsort(np.abs(self.q))[::-1]
         # also create another arrays for keeping sorted envelop
-        self.order = sorted_index
+        self.order = sorted_index[:]
         for i, ind in enumerate(sorted_index):
             self.qo[i] = self.q[ind]
             self.uo[i] = self.u[ind]
@@ -270,24 +255,9 @@ class UCR_DTW(object):
         """
         对Query进行标准化处理
         """
-        i = 0
-        ex = 0.0
-        ex2 = 0.0
-        while i < self.m:
-            line = self.line_to_float(next(self.qp))
-            ex += line
-            ex2 += line ** 2
-            self.q[i] = line
-            i += 1
-
-        # [Query z-normalize] Do z-normalize the query, keep in same array, self.q
-        mean, std = self.Compute_Mean_Std(ex, ex2)
-        # print("[Q_normalize]ex=%f,ex2=%f,mean=%f,std=%f"%(ex,ex2,mean,std),file=self.result)
-        for i in range(self.m):
-            old = self.q[i]
-            self.q[i] = (self.q[i] - mean) / std
-            # print("old_q[i]=%f;q[%d]=%f"%(old,i,self.q[i]),file=self.result)
-        self.qp.close()
+        mean = np.mean(self.q)
+        std = np.sqrt(np.sum(self.q ** 2) / len(self.q) - mean ** 2)
+        self.q = (self.q - mean) / std
 
     def lower_upper_lemire(self, t, lenght, r, l, u):
         """
@@ -482,5 +452,9 @@ class UCR_DTW(object):
 
 
 if __name__ == "__main__":
-    model = UCR_DTW('Data_new.txt', 'Query_new.txt')
+    query_file = './data/query_cj1.npy'
+    content_file = './data/data_cj1.npy'
+    query_np = np.load(query_file)
+    content_np = np.load(content_file)
+    model = UCR_DTW(content_np, query_np)
     model.main_run()
