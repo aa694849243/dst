@@ -247,8 +247,8 @@ class UCR_DTW(object):
                 self.cb[k] = self.cb[k + 1] + self.cb2[k]
 
     def line_to_float(self, line):
-        return ConvertELogStrToValue(line.strip())[1]
-
+        # return ConvertELogStrToValue(line.strip())[1]
+        return float(line.strip())
     def sort_query_order(self):
         """
         对标准化后的Q的所有元素取绝对值，然后对这些时间点的绝对值进行排序，获取对应的时间点索引序列
@@ -482,5 +482,5 @@ class UCR_DTW(object):
 
 
 if __name__ == "__main__":
-    model = UCR_DTW('Data_new.txt', 'Query_new.txt')
+    model = UCR_DTW('Data_new.txt', './data/Query2.txt')
     model.main_run()

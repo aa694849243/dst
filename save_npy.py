@@ -47,6 +47,12 @@ def save_npy(file_path,save_file):
         for line in f:
             li.append(ConvertELogStrToValue(line.strip())[1])
     np.save(save_file, np.array(li))
+def save_npy2(file_path,save_file):
+    li = []
+    with open(file_path, 'r') as f:
+        for line in f:
+            li.append(float(line.strip()))
+    np.save(save_file, np.array(li))
 if __name__ == "__main__":
-    save_npy('Query_new.txt','./data/query_cj1.npy')
-    save_npy('Data_new.txt','./data/data_cj1.npy')
+    save_npy2('./data/Query2.txt','./data/query_cj2.npy')
+    # save_npy('Data_new.txt','./data/data_cj1.npy')

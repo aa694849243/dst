@@ -50,22 +50,21 @@ class UCR_DTW(object):
     def __init__(self, data_np=None, query_np=None, m=128, R=0.05):
         self.content = data_np  # data file path
         # self.qp = open(query_file, 'r')  # query file path
-        self.result = open("lb_kim.result", 'w')
         self.bsf = float('inf')  # best-so-far
         self.m = len(query_np)  # the size of the query
         self.t = np.empty(self.m * 2)  # candidate C sequence
         self.q = query_np  # query array
-        self.order = [None] * self.m  # new order of the query
+        self.order = np.empty(self.m)  # new order of the query
         self.u, self.l = np.empty(self.m), np.empty(self.m)  # LB_Keogh Upper,Lower bound
-        self.qo = [None] * self.m
-        self.uo = [None] * self.m
-        self.lo = [None] * self.m
-        self.tz = [None] * self.m  # 标准化后的C
-        self.cb = [0] * self.m  # the cumulative lower bound
-        self.cb1 = [0] * self.m  # the cumulative lower bound
-        self.cb2 = [0] * self.m  # the cumulative lower bound
-        self.u_d = [None] * self.m
-        self.l_d = [None] * self.m
+        self.qo = np.empty(self.m)
+        self.uo = np.empty(self.m)
+        self.lo = np.empty(self.m)
+        self.tz = np.empty(self.m)  # 标准化后的C
+        self.cb = np.zeros(self.m)  # the cumulative lower bound
+        self.cb1 = np.zeros(self.m)  # the cumulative lower bound
+        self.cb2 = np.zeros(self.m)  # the cumulative lower bound
+        self.u_d = np.empty(self.m)
+        self.l_d = np.empty(self.m)
 
         """
         for every EPOCH points, all cummulative values, such as ex(sum),ex2,
@@ -81,9 +80,9 @@ class UCR_DTW(object):
         self.kim = 0
         self.keogh = 0  # LB_Keogh_EQ
         self.keogh2 = 0  # LB_Keogh_EC
-        self.buffer = np.empty(self.EPOCH)
-        self.u_buff = np.empty(self.EPOCH)
-        self.l_buff = np.empty(self.EPOCH)
+        self.buffer = np.zeros(self.EPOCH)
+        self.u_buff = np.zeros(self.EPOCH)
+        self.l_buff = np.zeros(self.EPOCH)
 
     def print_result(self, i):
         print("Location: ", self.loc)
@@ -93,7 +92,7 @@ class UCR_DTW(object):
         print("Pruned by LB_Kim   : %.2f" % ((self.kim / i) * 100), '%')
         print("Pruned by LB_Keogh : %.2f" % ((self.keogh / i) * 100), '%')
         print("Pruned by LB_Keogh2: %.2f" % ((self.keogh2 / i) * 100), '%')
-        print("DTW Calculation    : %.2f" % ((100 - self.kim + self.keogh + self.keogh2) / i * 100), '%')
+        print("DTW Calculation    : %.2f" % (100 - ((self.kim + self.keogh + self.keogh2) / i * 100)), '%')
 
     def main_run(self):
         self.t1 = time.time()  # start the clock
@@ -164,7 +163,7 @@ class UCR_DTW(object):
                         # LB_Keogh_EC
                         lb_k2 = self.lb_keogh_data_cumulative(self.order, self.tz, self.qo, self.cb2, self.l_buff[I:],
                                                               self.u_buff[I:], self.m, mean, std, self.bsf)
-                        print("lb_k2:%f best_so_far:%f" % (lb_k2, self.bsf), file=self.result)
+                        print("lb_k2:%f best_so_far:%f" % (lb_k2, self.bsf))
                         if lb_k2 < self.bsf:
                             # choose better lower bound between lb_keogh and lb_keogh2 to be used in early abandoning DTW
                             # Note that cb and cb2 will be cumulative summed here
@@ -187,7 +186,6 @@ class UCR_DTW(object):
             print("#" * 20, it, ep, "#" * 20)
 
         i = it * (self.EPOCH - self.m + 1) + ep
-        self.result.close()
         self.t2 = time.time()
         self.print_result(i)
 
@@ -218,7 +216,7 @@ class UCR_DTW(object):
     def Early_Abandon_DTW(self, it, i):
         # compute DTW and early abandoning if possible
         dist = self.dtw(self.tz, self.q, self.cb, self.m, self.r, self.bsf)
-        print("dtw-dist:%f best_so_far:%f" % (dist, self.bsf), file=self.result)
+        print("dtw-dist:%f best_so_far:%f" % (dist, self.bsf))
         if dist < self.bsf:
             # update bsf
             # loc is the real starting locatin of the nearest neighbor in the file
@@ -344,7 +342,7 @@ class UCR_DTW(object):
             cb   : (output)current bound at each position.It will be used later for early abandoning in DTW
         """
         lb = 0
-        print("lb_keogh_cumulative:mean=%f;std=%f" % (mean, std), file=self.result)
+        # print("lb_keogh_cumulative:mean=%f;std=%f" % (mean, std))
 
         for i in range(lenght):
             if lb >= best_so_far:
@@ -359,9 +357,7 @@ class UCR_DTW(object):
                 d = self.dist(x, lo[i])
             lb += d
             cb[order[i]] = d  # 把每个距离都记录下来，提供给后面Early Abandoning of DTW 使用
-            print(
-                "lb_keogh_cumulative:j=%d;order[i]=%d,q[order[i]]=%f;x=%f;d=%f" % (j, order[i], self.q[order[i]], x, d),
-                file=self.result)
+            # print("lb_keogh_cumulative:j=%d;order[i]=%d,q[order[i]]=%f;x=%f;d=%f" % (j, order[i], self.q[order[i]], x, d))
         return lb
 
     def lb_keogh_data_cumulative(self, order, tz, qo, cb, l, u, lenght, mean, std, best_so_far=float('inf')):
@@ -452,9 +448,16 @@ class UCR_DTW(object):
 
 
 if __name__ == "__main__":
-    query_file = './data/query_cj1.npy'
+    query_file = './data/query_cj2.npy'
     content_file = './data/data_cj1.npy'
     query_np = np.load(query_file)
     content_np = np.load(content_file)
     model = UCR_DTW(content_np, query_np)
     model.main_run()
+    # x1 = np.linspace(0, 50, 100, endpoint=False)
+    # y1 = 3.1 * np.sin(x1 / 1.5) + 3.5
+    #
+    # x2 = np.linspace(0, 25, 50, endpoint=False)  # half slice of x1
+    # y2 = 3.1 * np.sin((x2 + 4) / 1.5) + 3.5
+    # model = UCR_DTW(y1, y2)
+    # model.main_run()
