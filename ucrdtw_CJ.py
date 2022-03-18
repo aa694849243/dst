@@ -448,7 +448,7 @@ class UCR_DTW(object):
 
 
 if __name__ == "__main__":
-    query_file = './data/query_cj2.npy'
+    query_file = './data/query_cj1.npy'
     content_file = './data/data_cj1.npy'
     query_np = np.load(query_file)
     content_np = np.load(content_file)
