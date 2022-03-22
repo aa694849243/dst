@@ -5,6 +5,8 @@ from collections import deque
 import math
 import re
 import math
+import pandas as pd
+import matplotlib.pyplot as plt
 
 
 def ConvertELogStrToValue(eLogStr):
@@ -47,13 +49,13 @@ from collections import deque
 
 class UCR_DTW(object):
 
-    def __init__(self, data_np=None, query_np=None, m=128, R=0.05):
-        self.content = data_np  # data file path
+    def __init__(self, data_np=None, query_np=None, R=0.05, bsf=float('inf')):
+        self.content = np.array(data_np, dtype='f2')  # data file path
         # self.qp = open(query_file, 'r')  # query file path
-        self.bsf = float('inf')  # best-so-far
+        self.bsf = bsf  # best-so-far
         self.m = len(query_np)  # the size of the query
         self.t = np.empty(self.m * 2)  # candidate C sequence
-        self.q = query_np  # query array
+        self.q = np.array(query_np, dtype='f2')  # query array
         self.order = np.empty(self.m)  # new order of the query
         self.u, self.l = np.empty(self.m), np.empty(self.m)  # LB_Keogh Upper,Lower bound
         self.qo = np.empty(self.m)
@@ -80,9 +82,9 @@ class UCR_DTW(object):
         self.kim = 0
         self.keogh = 0  # LB_Keogh_EQ
         self.keogh2 = 0  # LB_Keogh_EC
-        self.buffer = np.zeros(self.EPOCH)
-        self.u_buff = np.zeros(self.EPOCH)
-        self.l_buff = np.zeros(self.EPOCH)
+        self.buffer = np.zeros(self.EPOCH, dtype='f2')
+        self.u_buff = np.zeros(self.EPOCH, dtype='f2')
+        self.l_buff = np.zeros(self.EPOCH, dtype='f2')
 
     def print_result(self, i):
         print("Location: ", self.loc)
@@ -156,10 +158,10 @@ class UCR_DTW(object):
                                                     std, self.bsf)
                     print("lb_k:%f best_so_far:%f" % (lb_k, self.bsf))
                     if lb_k < self.bsf:
-                        for k in range(self.m):
-                            # z-normalization of t will be computed on the fly
-                            self.tz[k] = (self.t[(k + j)] - mean) / std  # 对完整的C序列进行标准化处理
-
+                        # for k in range(self.m):
+                        #     # z-normalization of t will be computed on the fly
+                        #     self.tz[k] = (self.t[(k + j)] - mean) / std  # 对完整的C序列进行标准化处理
+                        self.tz = (self.t[j:j + self.m] - mean) / std
                         # LB_Keogh_EC
                         lb_k2 = self.lb_keogh_data_cumulative(self.order, self.tz, self.qo, self.cb2, self.l_buff[I:],
                                                               self.u_buff[I:], self.m, mean, std, self.bsf)
@@ -447,13 +449,37 @@ class UCR_DTW(object):
         return (x - y) ** 2
 
 
-if __name__ == "__main__":
-    query_file = './data/query_cj1.npy'
-    content_file = './data/data_cj1.npy'
-    query_np = np.load(query_file)
-    content_np = np.load(content_file)
-    model = UCR_DTW(content_np, query_np)
+def dts_plot(content, template, loc, start):
+    plt.plot(range(start, start + len(content)), content, label='content')
+    plt.plot(range(start + loc, start + loc + len(template)), template, label='template')
+    plt.vlines(start + loc, ymin=0, ymax=max(content), color='r', linestyles='solid')
+    plt.legend()
+    plt.show()
+
+
+def dts_plot2(content, template, loc):
+    plt.plot(content, label='content')
+    # plt.plot(range(loc, loc + len(template)), template, label='template')
+    plt.vlines(loc, ymin=0, ymax=max(content), color='r', linestyles='solid')
+    plt.legend()
+    plt.show()
+
+
+def downsampling_dtw(content, query):
+    content = np.array(content)[::10]
+    query = np.array(query)[::10]
+    model = UCR_DTW(content, query)
     model.main_run()
+    return model.bsf * 10
+
+
+if __name__ == "__main__":
+    # query_file = './data/query_cj1.npy'
+    # content_file = './data/data_cj1.npy'
+    # query_np = np.load(query_file)
+    # content_np = np.load(content_file)
+    # model = UCR_DTW(content_np, query_np)
+    # model.main_run()
     # x1 = np.linspace(0, 50, 100, endpoint=False)
     # y1 = 3.1 * np.sin(x1 / 1.5) + 3.5
     #
@@ -461,3 +487,22 @@ if __name__ == "__main__":
     # y2 = 3.1 * np.sin((x2 + 4) / 1.5) + 3.5
     # model = UCR_DTW(y1, y2)
     # model.main_run()
+    template = pd.read_csv(f'./data/template.csv')
+    tem = np.array(template['current(pA)'])
+    t1 = np.array(pd.read_csv(
+        f'./data/selected-20211010_LAB256_5K_test_yx-channel102-from-1.3487867217536482mins-to-1.5833642130593821mins.csv')[
+                      'current(pA)'])
+    t2 = np.array(pd.read_csv(
+        './data/selected-20211010_LAB256_5K_test_yx-channel102-from-2.1120799001014148mins-to-2.4391010497190284mins.csv')[
+                      'current(pA)'])
+    t3 = np.array(pd.read_csv(
+        './data/selected-20211010_LAB256_5K_test_yx-channel102-from-3.8165670142065324mins-to-4.248088531187123mins.csv')[
+                      'current(pA)'])
+    # print(downsampling_dtw(t3, tem))
+    model = UCR_DTW(t2, tem, bsf=10200)
+    model.main_run()
+    # print(len(t3))
+    # print(len(tem))
+    # print(len(t2))
+    # print(len(t1))
+    # dts_plot2(t2, tem, 98108)
