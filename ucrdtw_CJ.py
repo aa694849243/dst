@@ -498,11 +498,11 @@ if __name__ == "__main__":
     t3 = np.array(pd.read_csv(
         './data/selected-20211010_LAB256_5K_test_yx-channel102-from-3.8165670142065324mins-to-4.248088531187123mins.csv')[
                       'current(pA)'])
-    # print(downsampling_dtw(t3, tem))
-    model = UCR_DTW(t2, tem, bsf=10200)
+    # print(downsampling_dtw(t2, tem))
+    model = UCR_DTW(t3, tem)
     model.main_run()
     # print(len(t3))
     # print(len(tem))
     # print(len(t2))
     # print(len(t1))
-    # dts_plot2(t2, tem, 98108)
+    # dts_plot2(t2, tem, 83626)
