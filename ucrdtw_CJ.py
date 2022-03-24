@@ -50,12 +50,12 @@ from collections import deque
 class UCR_DTW(object):
 
     def __init__(self, data_np=None, query_np=None, R=0.05, bsf=float('inf')):
-        self.content = np.array(data_np, dtype='f2')  # data file path
+        self.content = np.array(data_np, dtype='f4')  # data file path
         # self.qp = open(query_file, 'r')  # query file path
         self.bsf = bsf  # best-so-far
         self.m = len(query_np)  # the size of the query
         self.t = np.empty(self.m * 2)  # candidate C sequence
-        self.q = np.array(query_np, dtype='f2')  # query array
+        self.q = np.array(query_np, dtype='f4')  # query array
         self.order = np.empty(self.m)  # new order of the query
         self.u, self.l = np.empty(self.m), np.empty(self.m)  # LB_Keogh Upper,Lower bound
         self.qo = np.empty(self.m)
@@ -82,9 +82,9 @@ class UCR_DTW(object):
         self.kim = 0
         self.keogh = 0  # LB_Keogh_EQ
         self.keogh2 = 0  # LB_Keogh_EC
-        self.buffer = np.zeros(self.EPOCH, dtype='f2')
-        self.u_buff = np.zeros(self.EPOCH, dtype='f2')
-        self.l_buff = np.zeros(self.EPOCH, dtype='f2')
+        self.buffer = np.zeros(self.EPOCH, dtype='f4')
+        self.u_buff = np.zeros(self.EPOCH, dtype='f4')
+        self.l_buff = np.zeros(self.EPOCH, dtype='f4')
 
     def print_result(self, i):
         print("Location: ", self.loc)
@@ -465,12 +465,29 @@ def dts_plot2(content, template, loc):
     plt.show()
 
 
+def dts_plot3(content, template, loc):
+    content = content[loc:loc + len(template)].copy(deep=True)
+    content, template = dtw_std(content), dtw_std(template)
+    plt.plot(content, label='content')
+    plt.plot(template, label='template')
+    # plt.vlines(loc, ymin=min(content), ymax=max(content), color='r', linestyles='solid')
+    plt.legend()
+    plt.show()
+
+
 def downsampling_dtw(content, query):
     content = np.array(content)[::10]
     query = np.array(query)[::10]
     model = UCR_DTW(content, query)
     model.main_run()
     return model.bsf * 10
+
+
+def dtw_std(data):
+    data = np.array(data, dtype='f4')
+    mean = np.mean(data)
+    std = np.std(data)
+    return (data - mean) / std
 
 
 if __name__ == "__main__":
@@ -498,11 +515,19 @@ if __name__ == "__main__":
     t3 = np.array(pd.read_csv(
         './data/selected-20211010_LAB256_5K_test_yx-channel102-from-3.8165670142065324mins-to-4.248088531187123mins.csv')[
                       'current(pA)'])
-    # print(downsampling_dtw(t2, tem))
-    model = UCR_DTW(t3, tem)
-    model.main_run()
+    # print(downsampling_dtw(t3, tem))
+    # model = UCR_DTW(t3[::10], tem[::10])
+    # model.main_run()
     # print(len(t3))
     # print(len(tem))
     # print(len(t2))
     # print(len(t1))
-    # dts_plot2(t2, tem, 83626)
+    dts_plot2(t3, tem, 47510)
+    # tem = dtw_std(tem)
+    # t2 = dtw_std(t2)
+    # t2 = dtw_std(t2)
+    # t3 = dtw_std(t3)
+    # dts_plot3(tem, tem, 0)
+    dts_plot3(t3, tem, 47510)
+    # dts_plot3(t2, tem, 83626)
+    # dts_plot3(t3, tem, 89757)
