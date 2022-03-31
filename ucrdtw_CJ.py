@@ -190,12 +190,16 @@ class UCR_DTW(object):
         i = it * (self.EPOCH - self.m + 1) + ep
         self.t2 = time.time()
         self.print_result(i)
+        return self.loc, math.sqrt(self.bsf), (self.t2 - self.t1)
 
     def buffer_init(self, it):
         # read first m-1 points
         if it == 0:
             # 把data file中的m-1个数据读进buffer
-            self.buffer[:self.m - 1] = self.content[:self.m - 1]
+            try:
+                self.buffer[:self.m - 1] = self.content[:self.m - 1]
+            except:
+                pass
         else:
             for k in range(self.m - 1):
                 # 把最后的m-1个时间点移到buffer的前面
@@ -457,16 +461,17 @@ def dts_plot(content, template, loc, start):
     plt.show()
 
 
-def dts_plot2(content, template, loc):
+def dts_plot2(content, template, loc, distance, time):
     plt.plot(content, label='content')
     # plt.plot(range(loc, loc + len(template)), template, label='template')
-    plt.vlines(loc, ymin=0, ymax=max(content), color='r', linestyles='solid')
+    plt.vlines(loc, linewidth=0.5, ymin=0, ymax=max(content), color='r', linestyles='solid')
+    plt.text(loc, max(content), f'{distance=}\n{time=}')
     plt.legend()
     plt.show()
 
 
 def dts_plot3(content, template, loc):
-    content = content[loc:loc + len(template)].copy(deep=True)
+    content = content[loc:loc + len(template)].copy()
     content, template = dtw_std(content), dtw_std(template)
     plt.plot(content, label='content')
     plt.plot(template, label='template')
@@ -504,30 +509,29 @@ if __name__ == "__main__":
     # y2 = 3.1 * np.sin((x2 + 4) / 1.5) + 3.5
     # model = UCR_DTW(y1, y2)
     # model.main_run()
-    template = pd.read_csv(f'./data/template.csv')
-    tem = np.array(template['current(pA)'])
+    template = pd.read_csv(f'./data/template2.csv')
+    tem = np.array(template['current(pA)'])[:1700]
     t1 = np.array(pd.read_csv(
-        f'./data/selected-20211010_LAB256_5K_test_yx-channel102-from-1.3487867217536482mins-to-1.5833642130593821mins.csv')[
+        f'./data/dtwtest1/selected-20220324220245_LAB256V2_5K_PC28_30_Z0_HD25j4j12d_AD1_Ecoli_Wangpeiru_Mux-channel17-from-0.5470526062461012mins-to-0.6654298368808256mins.csv')[
                       'current(pA)'])
     t2 = np.array(pd.read_csv(
-        './data/selected-20211010_LAB256_5K_test_yx-channel102-from-2.1120799001014148mins-to-2.4391010497190284mins.csv')[
+        './data/dtwtest1/selected-20220324220245_LAB256V2_5K_PC28_30_Z0_HD25j4j12d_AD1_Ecoli_Wangpeiru_Mux-channel17-from-0.7233901130128501mins-to-0.7735836854763896mins.csv')[
                       'current(pA)'])
     t3 = np.array(pd.read_csv(
-        './data/selected-20211010_LAB256_5K_test_yx-channel102-from-3.8165670142065324mins-to-4.248088531187123mins.csv')[
+        './data/dtwtest1/selected-20220324220245_LAB256V2_5K_PC28_30_Z0_HD25j4j12d_AD1_Ecoli_Wangpeiru_Mux-channel17-from-1.9696703491907588mins-to-2.316097506817188mins.csv')[
                       'current(pA)'])
-    # print(downsampling_dtw(t3, tem))
-    # model = UCR_DTW(t3[::10], tem[::10])
-    # model.main_run()
-    # print(len(t3))
-    # print(len(tem))
-    # print(len(t2))
+    t4 = np.array(pd.read_csv(
+        './data/selected-20220324220245_LAB256V2_5K_PC28_30_Z0_HD25j4j12d_AD1_Ecoli_Wangpeiru_Mux-channel17-from-6.164560287626805mins-to-6.356887226860984mins.csv')[
+                      'current(pA)'])
+    t5 = np.array(pd.read_csv(
+        './data/selected-20220324220245_LAB256V2_5K_PC28_30_Z0_HD25j4j12d_AD1_Ecoli_Wangpeiru_Mux-channel17-from-7.022299725985968mins-to-7.3367578907816196mins.csv')[
+                      'current(pA)'])
+    model = UCR_DTW(t1[::10], tem[::10], bsf=25)
+    model.main_run()
     # print(len(t1))
-    dts_plot2(t3, tem, 47510)
+    # dts_plot2(t5, tem, 46130, 9.6, 6.9)
     # tem = dtw_std(tem)
     # t2 = dtw_std(t2)
-    # t2 = dtw_std(t2)
-    # t3 = dtw_std(t3)
-    # dts_plot3(tem, tem, 0)
-    dts_plot3(t3, tem, 47510)
+    # dts_plot3(t5, tem, 46130)
     # dts_plot3(t2, tem, 83626)
     # dts_plot3(t3, tem, 89757)
