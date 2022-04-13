@@ -465,7 +465,7 @@ def dts_plot2(content, template, loc, distance, time):
     plt.plot(content, label='content')
     # plt.plot(range(loc, loc + len(template)), template, label='template')
     plt.vlines(loc, linewidth=0.5, ymin=0, ymax=max(content), color='r', linestyles='solid')
-    plt.text(loc, max(content), f'{distance=}\n{time=}')
+    plt.text(loc, max(content), f'{distance}\n{time}')
     plt.legend()
     plt.show()
 
