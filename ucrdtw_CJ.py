@@ -500,15 +500,15 @@ if __name__ == "__main__":
     # content_file = './data/data_cj1.npy'
     # query_np = np.load(query_file)
     # content_np = np.load(content_file)
-    # model = UCR_DTW(content_np, query_np)
-    # model.main_run()
+    # models = UCR_DTW(content_np, query_np)
+    # models.main_run()
     # x1 = np.linspace(0, 50, 100, endpoint=False)
     # y1 = 3.1 * np.sin(x1 / 1.5) + 3.5
     #
     # x2 = np.linspace(0, 25, 50, endpoint=False)  # half slice of x1
     # y2 = 3.1 * np.sin((x2 + 4) / 1.5) + 3.5
-    # model = UCR_DTW(y1, y2)
-    # model.main_run()
+    # models = UCR_DTW(y1, y2)
+    # models.main_run()
     template = pd.read_csv(f'./data/template2.csv')
     tem = np.array(template['current(pA)'])[:1700]
     t1 = np.array(pd.read_csv(
